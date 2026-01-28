@@ -1,31 +1,39 @@
 
-FROM node:19-alpine3.15 as dev-deps
+# -------- dev deps --------
+FROM node:19-alpine3.15 AS dev-deps
 WORKDIR /app
-COPY package.json package.json
+COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 
 
-FROM node:19-alpine3.15 as builder
+# -------- build --------
+FROM node:19-alpine3.15 AS builder
 WORKDIR /app
 COPY --from=dev-deps /app/node_modules ./node_modules
 COPY . .
 # RUN yarn test
 RUN yarn build
 
-FROM node:19-alpine3.15 as prod-deps
+
+# -------- prod deps --------
+FROM node:19-alpine3.15 AS prod-deps
 WORKDIR /app
-COPY package.json package.json
+COPY package.json yarn.lock ./
 RUN yarn install --prod --frozen-lockfile
 
 
-FROM node:19-alpine3.15 as prod
-EXPOSE 3000
+# -------- production --------
+FROM node:19-alpine3.15 AS prod
+ARG APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+
 WORKDIR /app
-ENV APP_VERSION=${APP_VERSION}
+EXPOSE 3000
+
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
-CMD [ "node","dist/main.js"]
+CMD ["node", "dist/main.js"]
 
 
 
